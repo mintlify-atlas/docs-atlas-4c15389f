@@ -1,0 +1,203 @@
+---
+title: "Authentication"
+description: "How to obtain and use access tokens with the Aura Farm API."
+---
+
+The Aura Farm API uses [Supabase](https://supabase.com) for identity management. Supabase issues standard JWT bearer tokens that you include on every protected request.
+
+## Sign in and obtain a token
+
+Send a `POST` request to `/api/auth/login` with your email and password. The response includes an `accessToken` and a `refreshToken`.
+
+<ParamField body="email" type="string" required>
+  Your `@calpoly.edu` email address.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Your account password.
+</ParamField>
+
+<CodeGroup>
+
+```bash curl
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "mmustang@calpoly.edu", "password": "SecurePass123"}'
+```
+
+```typescript TypeScript
+const res = await fetch("http://localhost:3000/api/auth/login", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    email: "mmustang@calpoly.edu",
+    password: "SecurePass123",
+  }),
+});
+
+const { success, data } = await res.json();
+// data.accessToken  — use on protected requests
+// data.refreshToken — use to renew the session
+// data.user         — { id, email, name, auraPoints, streak }
+```
+
+</CodeGroup>
+
+**Response** (HTTP 200):
+
+```json
+{
+  "success": true,
+  "data": {
+    "accessToken": "<jwt>",
+    "refreshToken": "<refresh-jwt>",
+    "user": {
+      "id": 42,
+      "email": "mmustang@calpoly.edu",
+      "name": "musty_mustang",
+      "auraPoints": 320,
+      "streak": 5
+    }
+  }
+}
+```
+
+<Warning>
+Registration is restricted to `@calpoly.edu` email addresses. Attempts to sign up with any other domain are rejected with HTTP 400.
+</Warning>
+
+## Use the token
+
+Include the `accessToken` in the `Authorization` header as a Bearer token on every protected request.
+
+<CodeGroup>
+
+```bash curl
+curl http://localhost:3000/api/users/me \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+```typescript TypeScript
+const res = await fetch("http://localhost:3000/api/completions", {
+  method: "POST",
+  headers: {
+    "Authorization": `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({ challengeId: 7, latitude: 35.299, longitude: -120.663 }),
+});
+```
+
+</CodeGroup>
+
+The server extracts the token, verifies it with Supabase, then looks up the matching user record. If the token is missing or invalid, the request is rejected with HTTP 401.
+
+## Token refresh
+
+Access tokens expire. When a request returns HTTP 401, use the `refreshToken` to obtain a new session, then retry the original request.
+
+The frontend `authedFetch` helper in `lib/api.ts` does this automatically:
+
+1. Attach the current `accessToken` and make the request.
+2. If the response is `401`, call `refreshSession()` (which calls Supabase with the stored `refreshToken`).
+3. If a new `accessToken` is returned, retry the original request once with the new token.
+4. If the refresh also fails, return the 401 response to the caller.
+
+<CodeGroup>
+
+```typescript TypeScript (manual refresh)
+import { refreshSession } from "@/lib/auth";
+
+async function authedRequest(url: string, options: RequestInit = {}) {
+  let res = await fetch(url, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...(options.headers as Record<string, string> ?? {}),
+    },
+  });
+
+  if (res.status === 401) {
+    const refreshed = await refreshSession();
+    if (refreshed?.accessToken) {
+      res = await fetch(url, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${refreshed.accessToken}`,
+          ...(options.headers as Record<string, string> ?? {}),
+        },
+      });
+    }
+  }
+
+  return res;
+}
+```
+
+</CodeGroup>
+
+<Note>
+The frontend also checks token expiry proactively using the `exp` claim in the JWT payload (with a 30-second buffer) before making a request, so most refreshes happen silently before a 401 is ever received.
+</Note>
+
+## Protected endpoints
+
+The following endpoints require a valid `Authorization: Bearer <accessToken>` header.
+
+| Method | Endpoint | Notes |
+|--------|----------|-------|
+| `POST` | `/api/completions` | Submit a challenge completion |
+| `PATCH` | `/api/completions/:id` | Update your own completion |
+| `POST` | `/api/completions/:id/like` | Like a completion |
+| `DELETE` | `/api/completions/:id/like` | Unlike a completion |
+| `GET` | `/api/users/me` | Get your own profile |
+| `PATCH` | `/api/users/me` | Update your profile |
+| `POST` | `/api/challenges` | Create a challenge (admin only) |
+| `POST` | `/api/flags` | Flag a completion |
+| `GET` | `/api/flags` | List all flags (admin only) |
+| `POST` | `/api/upload` | Upload an image |
+| `POST` | `/api/auth/change-password` | Change your password |
+
+<Info>
+Admin-only endpoints additionally require the authenticated user to have `role = "admin"`. Requests from non-admin users are rejected with HTTP 403.
+</Info>
+
+## Error responses
+
+| Status | Error | Cause |
+|--------|-------|-------|
+| `401` | `No token provided` | `Authorization` header is missing or does not start with `Bearer ` |
+| `401` | `Invalid or expired token` | Token failed Supabase verification |
+| `401` | `Authentication failed` | Unexpected error during token verification |
+| `403` | `Admin access required` | Endpoint requires admin role |
+
+**Example 401 response:**
+
+```json
+{
+  "success": false,
+  "error": "No token provided"
+}
+```
+
+## Registration flow
+
+New accounts require email verification before the first login.
+
+<Steps>
+  <Step title="Sign up">
+    `POST /api/auth/signup` with `email`, `password`, and `username`. A verification code is sent to the provided email.
+  </Step>
+  <Step title="Verify email">
+    `POST /api/auth/verify` with `email` and the 6-digit `token` from the email. On success the response includes `accessToken` and `refreshToken`.
+  </Step>
+  <Step title="Sign in">
+    Use `POST /api/auth/login` for all subsequent sessions.
+  </Step>
+</Steps>
+
+If the verification email does not arrive, call `POST /api/auth/resend` with `{ "email": "..." }` to send a new code.
+
+<Note>
+The auth endpoints (`/api/auth/*`) are rate-limited to **5 requests per 15 minutes** per IP to prevent brute-force attacks.
+</Note>

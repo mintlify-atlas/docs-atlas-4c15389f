@@ -1,0 +1,145 @@
+---
+title: "Environment Setup"
+description: "Configure your local environment to run Aura Farm."
+---
+
+## Prerequisites
+
+- **Node.js 18+** and **npm**
+- A [Supabase](https://supabase.com) project (use the shared team project or create your own)
+- A PostgreSQL database (the Supabase project's built-in database works fine)
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/codebox-calpoly/AuraFarm.git
+    cd AuraFarm
+    ```
+  </Step>
+  <Step title="Install dependencies">
+    ```bash
+    # Backend
+    cd backend && npm install && cd ..
+
+    # Frontend
+    cd frontend && npm install && cd ..
+    ```
+  </Step>
+  <Step title="Configure the backend">
+    Copy the example environment file:
+
+    ```bash
+    cp backend/.env.example backend/.env
+    ```
+
+    Open `backend/.env` and fill in all four required variables:
+
+    | Variable | Where to find it |
+    |---|---|
+    | `DATABASE_URL` | Supabase → Project Settings → Database → Connection string (URI) |
+    | `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+    | `SUPABASE_SERVICE_KEY` | Supabase → Project Settings → API → `service_role` secret key |
+    | `SUPABASE_ANON_KEY` | Supabase → Project Settings → API → `anon` public key |
+
+    <Warning>
+      `SUPABASE_SERVICE_KEY` is a privileged credential. Never commit it to source control or expose it to the frontend.
+    </Warning>
+  </Step>
+  <Step title="Run database migrations">
+    ```bash
+    cd backend && npx prisma migrate deploy && cd ..
+    ```
+  </Step>
+  <Step title="Start the backend">
+    ```bash
+    cd backend && npm run dev
+    ```
+
+    The API is available at `http://localhost:3000`. Confirm it is running:
+
+    ```bash
+    curl http://localhost:3000/health
+    # {"status":"ok","timestamp":"..."}
+    ```
+  </Step>
+  <Step title="Start the frontend">
+    ```bash
+    cd frontend && npx expo start
+    ```
+
+    Scan the QR code with Expo Go on your phone, or press `i` for iOS Simulator / `a` for Android Emulator.
+  </Step>
+</Steps>
+
+<Note>
+  **Physical device?** The frontend automatically derives the backend host from the Metro bundler URI, so your phone connects to the backend without any manual configuration — as long as it is on the same WiFi network as your development machine.
+</Note>
+
+## Backend environment variables
+
+All backend variables go in `backend/.env`.
+
+```bash
+# backend/.env
+
+DATABASE_URL="postgresql://..."
+
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_SERVICE_KEY="your-service-role-key"
+SUPABASE_ANON_KEY="your-anon-key"
+```
+
+### Optional rate-limit overrides
+
+The rate limiters are configured via environment variables. If unset, the defaults below apply.
+
+| Variable | Default | Description |
+|---|---|---|
+| `RATE_LIMIT_BY` | `ip` | Key requests by `ip` or `user` |
+| `RL_PUBLIC_WINDOW_MINUTES` | `15` | Window length for public endpoints |
+| `RL_PUBLIC_MAX` | `100` | Max requests per window (public) |
+| `RL_AUTH_WINDOW_MINUTES` | `15` | Window length for auth endpoints |
+| `RL_AUTH_MAX` | `5` | Max requests per window (auth) |
+| `RL_COMPLETION_WINDOW_HOURS` | `1` | Window length for completion submissions |
+| `RL_COMPLETION_MAX` | `10` | Max completion submissions per window |
+| `RL_FLAG_WINDOW_HOURS` | `1` | Window length for flag submissions |
+| `RL_FLAG_MAX` | `5` | Max flag submissions per window |
+
+## Frontend environment variables
+
+The frontend reads from `.env` in the `frontend/` directory (or the project root). **No frontend `.env` is required for local development** — the app auto-detects the backend URL from Metro.
+
+Only set these variables when you need to override the defaults:
+
+```bash
+# frontend/.env  (all lines are commented out by default)
+
+# Direct Supabase access for image uploads from the frontend.
+# Leave unset to route uploads through the backend proxy.
+# EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+# EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+
+# Point the app at a remote API instead of the local backend.
+# EXPO_PUBLIC_API_URL=https://your-api.example.com
+```
+
+| Variable | When to set |
+|---|---|
+| `EXPO_PUBLIC_SUPABASE_URL` | Only when you want the frontend to upload images directly to Supabase (bypassing the backend proxy) |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Required alongside `EXPO_PUBLIC_SUPABASE_URL` for direct uploads |
+| `EXPO_PUBLIC_API_URL` | Only when pointing the app at a remote or production API |
+
+<Tip>
+  `app.config.ts` also falls back to the backend's `SUPABASE_URL` and `SUPABASE_ANON_KEY` values, so if you have already configured `backend/.env` you may not need any frontend-specific `.env` at all.
+</Tip>
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Understand how the frontend, backend, and database connect.
+  </Card>
+  <Card title="Database" icon="database" href="/development/database">
+    Run migrations and explore the data models.
+  </Card>
+</CardGroup>

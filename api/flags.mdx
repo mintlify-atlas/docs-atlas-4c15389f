@@ -1,0 +1,212 @@
+---
+title: "Flags"
+description: "Report suspicious or invalid challenge completions."
+---
+
+## POST /api/flags
+
+Flags a challenge completion for admin review. Each user may flag a given completion only once.
+
+<Note>
+  This endpoint requires a valid Bearer token in the `Authorization` header.
+</Note>
+
+<Warning>
+  This endpoint is rate-limited. Submitting too many flag requests in a short window will result in a `429 Too Many Requests` response.
+</Warning>
+
+### Request body
+
+<ParamField body="completionId" type="number" required>
+  The integer ID of the `ChallengeCompletion` to flag.
+</ParamField>
+
+<ParamField body="reason" type="string">
+  Optional human-readable description of why the completion is being flagged.
+</ParamField>
+
+### Response
+
+**201 Created**
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the flag was created successfully.
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Human-readable confirmation message. Value: `"Completion flagged successfully"`.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  The newly created flag record.
+
+  <Expandable title="Flag properties">
+    <ResponseField name="id" type="number" required>
+      Unique identifier of the flag.
+    </ResponseField>
+    <ResponseField name="completionId" type="number" required>
+      ID of the flagged completion.
+    </ResponseField>
+    <ResponseField name="flaggedById" type="number" required>
+      ID of the user who submitted the flag.
+    </ResponseField>
+    <ResponseField name="reason" type="string">
+      Reason provided by the reporter, or `null` if none was given.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 timestamp of when the flag was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Description |
+| ------ | ----------- |
+| `400`  | Validation error (e.g. missing `completionId`) or the authenticated user tried to flag their own completion. |
+| `401`  | Missing or invalid Bearer token. |
+| `404`  | No completion exists with the given `completionId`. |
+| `409`  | The authenticated user has already flagged this completion. |
+| `429`  | Rate limit exceeded. |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/flags \
+  -H "Authorization: Bearer <accessToken>" \
+  -H "Content-Type: application/json" \
+  -d '{"completionId": 99, "reason": "Image does not match the challenge location."}'
+```
+
+```json
+{
+  "success": true,
+  "message": "Completion flagged successfully",
+  "data": {
+    "id": 7,
+    "completionId": 99,
+    "flaggedById": 42,
+    "reason": "Image does not match the challenge location.",
+    "createdAt": "2026-03-28T14:05:00.000Z"
+  }
+}
+```
+
+---
+
+## GET /api/flags
+
+Returns all submitted flags with related completion and user data, ordered by most recent first.
+
+<Note>
+  This endpoint requires a valid Bearer token for an **admin** account. Regular users receive `403 Forbidden`.
+</Note>
+
+### Response
+
+**200 OK**
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the request succeeded.
+</ResponseField>
+
+<ResponseField name="data" type="Flag[]" required>
+  Array of all flag records with nested completion and user details.
+
+  <Expandable title="Flag properties">
+    <ResponseField name="id" type="number" required>
+      Unique flag identifier.
+    </ResponseField>
+    <ResponseField name="completionId" type="number" required>
+      ID of the flagged completion.
+    </ResponseField>
+    <ResponseField name="flaggedById" type="number" required>
+      ID of the user who submitted the flag.
+    </ResponseField>
+    <ResponseField name="reason" type="string">
+      Reporter's reason, or `null`.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string" required>
+      ISO 8601 creation timestamp.
+    </ResponseField>
+    <ResponseField name="flaggedBy" type="object" required>
+      Abbreviated user record for the reporter.
+
+      <Expandable title="flaggedBy properties">
+        <ResponseField name="id" type="number" required>User ID.</ResponseField>
+        <ResponseField name="email" type="string" required>User email.</ResponseField>
+        <ResponseField name="name" type="string" required>Display name.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="completion" type="object" required>
+      The flagged completion with its associated user and challenge.
+
+      <Expandable title="completion properties">
+        <ResponseField name="id" type="number" required>Completion ID.</ResponseField>
+        <ResponseField name="user" type="object" required>
+          User who submitted the completion.
+
+          <Expandable title="user properties">
+            <ResponseField name="id" type="number" required>User ID.</ResponseField>
+            <ResponseField name="email" type="string" required>User email.</ResponseField>
+            <ResponseField name="name" type="string" required>Display name.</ResponseField>
+          </Expandable>
+        </ResponseField>
+        <ResponseField name="challenge" type="object" required>
+          Challenge associated with the completion.
+
+          <Expandable title="challenge properties">
+            <ResponseField name="id" type="number" required>Challenge ID.</ResponseField>
+            <ResponseField name="title" type="string" required>Challenge title.</ResponseField>
+          </Expandable>
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Description |
+| ------ | ----------- |
+| `401`  | Missing or invalid Bearer token. |
+| `403`  | Authenticated user does not have admin privileges. |
+
+### Example
+
+```bash
+curl http://localhost:3000/api/flags \
+  -H "Authorization: Bearer <adminAccessToken>"
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 7,
+      "completionId": 99,
+      "flaggedById": 42,
+      "reason": "Image does not match the challenge location.",
+      "createdAt": "2026-03-28T14:05:00.000Z",
+      "flaggedBy": {
+        "id": 42,
+        "email": "jsmith42@calpoly.edu",
+        "name": "Jane Smith"
+      },
+      "completion": {
+        "id": 99,
+        "user": {
+          "id": 17,
+          "email": "alee17@calpoly.edu",
+          "name": "Alex Lee"
+        },
+        "challenge": {
+          "id": 3,
+          "title": "Sunrise Summit"
+        }
+      }
+    }
+  ]
+}
+```

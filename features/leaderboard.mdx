@@ -1,0 +1,55 @@
+---
+title: "Leaderboard"
+description: "Compete with other students and see where you rank."
+---
+
+The leaderboard shows every student's standing in Aura Farm, ranked by total Aura Points. Open the **Ranks** tab to see where you sit among your peers and track who's leading each aura tier.
+
+## What the leaderboard shows
+
+Each entry in the leaderboard includes:
+
+| Field | Description |
+|---|---|
+| **Rank** | Your position among all users, sorted by Aura Points (highest first) |
+| **Name** | The student's display name |
+| **Aura Points** | Total points earned across all completed challenges |
+| **Streak** | Current consecutive-day completion streak |
+| **Completions** | Total number of challenges completed |
+
+Students with the same number of Aura Points share the same rank (dense ranking — no positions are skipped for ties).
+
+## How ranking works
+
+Rankings are determined solely by total Aura Points in descending order. The student with the most points is ranked #1. When two students have identical point totals, they receive the same rank number.
+
+Your personal rank is visible on the **Aura** tab as well, so you can check it without scrolling through the full list.
+
+## Browsing by aura tier
+
+The Ranks screen organizes the leaderboard by aura color. Tap any of the seven colored diamond icons at the top of the screen to filter the view to that tier's color theme. The list itself always reflects the full global ranking — the color selection changes the visual style, not which users appear.
+
+<Note>
+  The leaderboard loads the top 50 students by default. Use the `page` and `limit` query parameters on the API if you need to paginate through the full user list.
+</Note>
+
+## Streak tracking
+
+Each leaderboard entry surfaces a student's current streak alongside their points total. A high streak signals consistent daily engagement, which can be a meaningful differentiator even between students with similar point totals.
+
+<Tip>
+  Maintain your daily streak to stay visible on the leaderboard even as other students catch up on total points.
+</Tip>
+
+## Finding your own rank
+
+You don't need to scroll to find yourself. Your rank is returned as part of your user profile and is displayed prominently on the **Aura** tab. The rank updates each time you complete a challenge and your points total changes.
+
+<CardGroup cols={2}>
+  <Card title="Aura Points" icon="star" href="/features/aura-points">
+    Understand how points and tiers are calculated.
+  </Card>
+  <Card title="Challenges" icon="map-pin" href="/features/challenges">
+    Complete challenges to climb the rankings.
+  </Card>
+</CardGroup>

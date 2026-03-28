@@ -1,0 +1,115 @@
+---
+title: "Leaderboard"
+description: "Retrieve the ranked list of top students by Aura points."
+---
+
+## GET /api/leaderboard
+
+Returns a paginated list of users ranked by Aura points, highest first. Users with equal Aura points receive the same rank (dense ranking). No authentication is required.
+
+### Query parameters
+
+<ParamField query="page" type="number" default="1">
+  Page number to retrieve. Must be a positive integer. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="number" default="20">
+  Number of entries to return per page. Must be a positive integer. Defaults to `20`.
+</ParamField>
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the request succeeded.
+</ResponseField>
+
+<ResponseField name="data" type="LeaderboardEntry[]" required>
+  Array of ranked user entries for the requested page.
+
+  <Expandable title="LeaderboardEntry properties">
+    <ResponseField name="userId" type="number" required>
+      Unique identifier of the user.
+    </ResponseField>
+    <ResponseField name="userName" type="string" required>
+      Display name of the user.
+    </ResponseField>
+    <ResponseField name="userEmail" type="string" required>
+      Email address of the user.
+    </ResponseField>
+    <ResponseField name="auraPoints" type="number" required>
+      Total Aura points accumulated by the user.
+    </ResponseField>
+    <ResponseField name="streak" type="number" required>
+      Current consecutive-day completion streak.
+    </ResponseField>
+    <ResponseField name="completionsCount" type="number" required>
+      Total number of challenge completions submitted by the user.
+    </ResponseField>
+    <ResponseField name="rank" type="number" required>
+      Dense rank position. Users with equal Aura points share the same rank.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object" required>
+  Pagination metadata for the result set.
+
+  <Expandable title="pagination properties">
+    <ResponseField name="page" type="number" required>
+      Current page number.
+    </ResponseField>
+    <ResponseField name="limit" type="number" required>
+      Maximum entries returned per page.
+    </ResponseField>
+    <ResponseField name="total" type="number" required>
+      Total number of users across all pages.
+    </ResponseField>
+    <ResponseField name="totalPages" type="number" required>
+      Total number of pages available.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Description |
+| ------ | ----------- |
+| `400`  | Invalid query parameter value (e.g. non-numeric `page` or `limit`). |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/leaderboard?page=1&limit=20"
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "userId": 42,
+      "userName": "Jane Smith",
+      "userEmail": "jsmith42@calpoly.edu",
+      "auraPoints": 1500,
+      "streak": 7,
+      "completionsCount": 12,
+      "rank": 1
+    },
+    {
+      "userId": 17,
+      "userName": "Alex Lee",
+      "userEmail": "alee17@calpoly.edu",
+      "auraPoints": 1200,
+      "streak": 3,
+      "completionsCount": 9,
+      "rank": 2
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 84,
+    "totalPages": 5
+  }
+}
+```

@@ -1,0 +1,283 @@
+---
+title: "Challenges"
+description: "Browse and discover campus challenges."
+---
+
+<Note>
+  All endpoints are prefixed with `/api/challenges`. Responses use
+  `Content-Type: application/json`. Creating a challenge requires an admin
+  Bearer token.
+</Note>
+
+---
+
+## GET /api/challenges
+
+Return a paginated list of all challenges. Optionally filter by difficulty or
+search term.
+
+### Query parameters
+
+<ParamField query="page" type="integer">
+  Page number for pagination. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Number of challenges per page. Defaults to `20`, maximum `100`.
+</ParamField>
+
+<ParamField query="difficulty" type="string">
+  Filter by difficulty level. One of `easy`, `medium`, or `hard`.
+</ParamField>
+
+<ParamField query="search" type="string">
+  Case-insensitive keyword search against challenge title and description.
+  Maximum 100 characters.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Array of challenge objects.
+  <Expandable title="challenge properties">
+    <ResponseField name="id" type="integer">Unique challenge ID.</ResponseField>
+    <ResponseField name="title" type="string">Challenge title.</ResponseField>
+    <ResponseField name="description" type="string">Challenge description.</ResponseField>
+    <ResponseField name="latitude" type="number">GPS latitude of the challenge location.</ResponseField>
+    <ResponseField name="longitude" type="number">GPS longitude of the challenge location.</ResponseField>
+    <ResponseField name="difficulty" type="string">`easy`, `medium`, or `hard`.</ResponseField>
+    <ResponseField name="pointsReward" type="integer">Aura points awarded on completion.</ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 timestamp of creation.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  <Expandable title="properties">
+    <ResponseField name="page" type="integer">Current page number.</ResponseField>
+    <ResponseField name="limit" type="integer">Items per page.</ResponseField>
+    <ResponseField name="total" type="integer">Total number of matching challenges.</ResponseField>
+    <ResponseField name="totalPages" type="integer">Total number of pages.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Invalid query parameters (e.g. unknown `difficulty` value) |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/challenges?difficulty=easy&page=1&limit=10"
+```
+
+---
+
+## GET /api/challenges/nearby
+
+Return challenges within a given radius of the provided GPS coordinates, sorted
+by distance ascending (closest first).
+
+### Query parameters
+
+<ParamField query="latitude" type="number" required>
+  The user's current latitude (`-90` to `90`).
+</ParamField>
+
+<ParamField query="longitude" type="number" required>
+  The user's current longitude (`-180` to `180`).
+</ParamField>
+
+<ParamField query="radius" type="number">
+  Search radius in meters. Defaults to `5000`. Maximum `50000`.
+</ParamField>
+
+<ParamField query="page" type="integer">
+  Page number. Defaults to `1`.
+</ParamField>
+
+<ParamField query="limit" type="integer">
+  Items per page. Defaults to `20`, maximum `100`.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Challenges within the specified radius, sorted by distance ascending.
+  <Expandable title="challenge properties">
+    <ResponseField name="id" type="integer">Challenge ID.</ResponseField>
+    <ResponseField name="title" type="string">Challenge title.</ResponseField>
+    <ResponseField name="description" type="string">Challenge description.</ResponseField>
+    <ResponseField name="latitude" type="number">Challenge latitude.</ResponseField>
+    <ResponseField name="longitude" type="number">Challenge longitude.</ResponseField>
+    <ResponseField name="difficulty" type="string">`easy`, `medium`, or `hard`.</ResponseField>
+    <ResponseField name="pointsReward" type="integer">Points awarded on completion.</ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 creation timestamp.</ResponseField>
+    <ResponseField name="distance" type="number">
+      Distance in meters from the provided coordinates to the challenge
+      location.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="pagination" type="object">
+  <Expandable title="properties">
+    <ResponseField name="page" type="integer">Current page.</ResponseField>
+    <ResponseField name="limit" type="integer">Items per page.</ResponseField>
+    <ResponseField name="total" type="integer">Total challenges within radius.</ResponseField>
+    <ResponseField name="totalPages" type="integer">Total pages.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | `latitude` or `longitude` missing, or values out of range |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/challenges/nearby?latitude=35.3050&longitude=-120.6625&radius=1000"
+```
+
+---
+
+## GET /api/challenges/:id
+
+Return a single challenge by its ID, including the total number of completions.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The numeric ID of the challenge.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="integer">Challenge ID.</ResponseField>
+    <ResponseField name="title" type="string">Challenge title.</ResponseField>
+    <ResponseField name="description" type="string">Challenge description.</ResponseField>
+    <ResponseField name="latitude" type="number">GPS latitude.</ResponseField>
+    <ResponseField name="longitude" type="number">GPS longitude.</ResponseField>
+    <ResponseField name="difficulty" type="string">`easy`, `medium`, or `hard`.</ResponseField>
+    <ResponseField name="pointsReward" type="integer">Points awarded on completion.</ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 creation timestamp.</ResponseField>
+    <ResponseField name="completionsCount" type="integer">
+      Total number of times this challenge has been completed across all users.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | `id` is not a valid integer |
+| `404`  | No challenge found with that ID |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/challenges/42"
+```
+
+---
+
+## POST /api/challenges
+
+Create a new challenge. Returns the newly created challenge object.
+
+<Note>
+  Auth required: **Yes, admin only** — include `Authorization: Bearer <accessToken>`.
+  The authenticated user must have the `admin` role.
+</Note>
+
+### Request body
+
+<ParamField body="title" type="string" required>
+  Challenge title. 1–200 characters. Must be unique.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  Challenge description. 1–1000 characters.
+</ParamField>
+
+<ParamField body="latitude" type="number" required>
+  GPS latitude of the challenge location (`-90` to `90`).
+</ParamField>
+
+<ParamField body="longitude" type="number" required>
+  GPS longitude of the challenge location (`-180` to `180`).
+</ParamField>
+
+<ParamField body="difficulty" type="string" required>
+  One of `easy`, `medium`, or `hard`.
+</ParamField>
+
+<ParamField body="pointsReward" type="integer" required>
+  Positive integer representing the aura points awarded on completion.
+</ParamField>
+
+### Response — 201 Created
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"Challenge created successfully"`
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="integer">Newly assigned challenge ID.</ResponseField>
+    <ResponseField name="title" type="string">Challenge title.</ResponseField>
+    <ResponseField name="description" type="string">Challenge description.</ResponseField>
+    <ResponseField name="latitude" type="number">GPS latitude.</ResponseField>
+    <ResponseField name="longitude" type="number">GPS longitude.</ResponseField>
+    <ResponseField name="difficulty" type="string">Difficulty level.</ResponseField>
+    <ResponseField name="pointsReward" type="integer">Points reward.</ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 creation timestamp.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Validation error (missing field, out-of-range value, invalid difficulty) |
+| `401`  | Missing or invalid Bearer token |
+| `403`  | Authenticated user does not have the `admin` role |
+| `409`  | A challenge with the same title already exists |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/challenges \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{
+    "title": "Sunset from the P1 Rooftop",
+    "description": "Snap a photo at golden hour from the top of the P1 parking structure.",
+    "latitude": 35.3005,
+    "longitude": -120.6596,
+    "difficulty": "medium",
+    "pointsReward": 150
+  }'
+```

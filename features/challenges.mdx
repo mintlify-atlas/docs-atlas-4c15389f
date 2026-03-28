@@ -1,0 +1,73 @@
+---
+title: "Challenges"
+description: "Location-based challenges that reward students for real-world actions."
+---
+
+Challenges are the core activity in Aura Farm. Each challenge is a real-world task tied to a specific physical location on or near campus — attending events, hiking trails, volunteering, and more. Completing a challenge earns you Aura Points and contributes to your daily streak.
+
+## Challenge details
+
+Every challenge includes the following information:
+
+| Field | Description |
+|---|---|
+| **Title** | Short name for the challenge |
+| **Description** | What you need to do to complete it |
+| **Location** | GPS coordinates (latitude and longitude) of the challenge site |
+| **Difficulty** | `easy`, `medium`, or `hard` |
+| **Points reward** | The number of Aura Points you earn on completion |
+
+The difficulty level gives you a quick sense of effort required before you commit. Harder challenges generally award more points.
+
+## Finding challenges
+
+You can browse challenges from the home screen in two ways:
+
+**Browse all challenges** — The default view lists every available challenge, ordered by newest first. You can filter by difficulty to narrow down what you see.
+
+**Find nearby challenges** — The app uses your device location to surface challenges within a given radius (default 5 km). Results are sorted by distance, closest first, so you always see what's reachable right now.
+
+<Tip>
+  Switch to the nearby view when you're already out and about — you'll see challenges you can complete on the spot without extra travel.
+</Tip>
+
+## Completing a challenge
+
+<Steps>
+  <Step title="Browse and select a challenge">
+    From the home screen, tap any challenge card in the **Incoming** section to open its detail view. You'll see the full description and how many Aura Points you'll earn.
+  </Step>
+  <Step title="Go to the location">
+    Head to where the challenge takes place. The app verifies your GPS position when you submit, so you need to be physically present.
+  </Step>
+  <Step title="Take a photo">
+    Inside the challenge detail modal, tap to capture or upload a photo that proves you completed the task.
+  </Step>
+  <Step title="Add a caption (optional)">
+    Write a short caption to share context or celebrate the moment. This appears on your post in the social feed.
+  </Step>
+  <Step title="Submit">
+    Tap **Submit**. The app checks that your GPS coordinates are within the allowed distance of the challenge's location. If the location check passes, your completion is recorded, your Aura Points are added, and your streak updates.
+  </Step>
+</Steps>
+
+<Note>
+  GPS verification is enforced on submission. The allowed radius is configurable by the server administrator via the `MAX_COMPLETION_DISTANCE_M` environment variable (default 100 km). Submissions from outside the allowed radius are rejected.
+</Note>
+
+## One completion per challenge
+
+Each challenge can only be completed once per account. If you try to submit a challenge you've already completed, the app will let you know. Your completed challenges appear in the **Completed** section on the home screen.
+
+## Admin-only challenge creation
+
+Students cannot create challenges. Only administrators can add new challenges to the platform. If you have an idea for a challenge, reach out to your campus admins.
+
+<CardGroup cols={2}>
+  <Card title="Aura Points" icon="star" href="/features/aura-points">
+    Learn how points are earned and how tiers work.
+  </Card>
+  <Card title="Social Feed" icon="newspaper" href="/features/social-feed">
+    See how your completions appear to other students.
+  </Card>
+</CardGroup>

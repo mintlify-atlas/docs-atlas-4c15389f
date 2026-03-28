@@ -1,0 +1,102 @@
+{
+  "projectType": "saas",
+  "projectName": "Aura Farm",
+  "projectDescription": "A mobile gamification app that rewards students for attending campus events, volunteering, and exploring by completing location-based challenges and climbing leaderboards.",
+  "theme": "almond",
+  "primaryColor": "#0c64c4",
+  "lightColor": "#84b4dc",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guide",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Features",
+            "pages": [
+              "features/challenges",
+              "features/aura-points",
+              "features/leaderboard",
+              "features/social-feed"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/architecture",
+              "development/environment",
+              "development/database",
+              "development/contributing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api/overview",
+              "api/authentication"
+            ]
+          },
+          {
+            "group": "Endpoints",
+            "pages": [
+              "api/auth",
+              "api/challenges",
+              "api/completions",
+              "api/users",
+              "api/leaderboard",
+              "api/flags",
+              "api/upload"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Location-based challenge completion with GPS verification",
+    "Aura points system with tiered progression (25, 75, 150, 300, 500 pts)",
+    "Social feed with likes and photo proof submissions",
+    "Global leaderboard with streak tracking",
+    "Supabase-backed authentication with email OTP verification",
+    "Image upload for challenge proof via Supabase Storage",
+    "Admin role for creating and managing challenges",
+    "Content moderation via community flagging system"
+  ],
+  "publicApiSurface": [
+    "POST /api/auth/signup",
+    "POST /api/auth/login",
+    "POST /api/auth/verify",
+    "POST /api/auth/resend",
+    "POST /api/auth/change-password",
+    "GET /api/challenges",
+    "GET /api/challenges/nearby",
+    "GET /api/challenges/:id",
+    "POST /api/challenges (admin only)",
+    "GET /api/completions",
+    "GET /api/completions/:id",
+    "POST /api/completions",
+    "PATCH /api/completions/:id",
+    "POST /api/completions/:id/like",
+    "DELETE /api/completions/:id/like",
+    "GET /api/users/me",
+    "PATCH /api/users/me",
+    "GET /api/users/:id",
+    "GET /api/users/:id/completions",
+    "GET /api/users/:id/stats",
+    "GET /api/leaderboard",
+    "POST /api/flags",
+    "POST /api/upload"
+  ]
+}

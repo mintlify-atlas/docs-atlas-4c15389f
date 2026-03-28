@@ -1,0 +1,71 @@
+---
+title: "Upload"
+description: "Upload images for challenge completion proof."
+---
+
+## POST /api/upload
+
+Uploads an image file to Supabase Storage and returns its public URL. Use this URL when submitting a challenge completion via `POST /api/completions`.
+
+<Note>
+  This endpoint requires a valid Bearer token in the `Authorization` header.
+</Note>
+
+### Request
+
+Send the request as `multipart/form-data` with the image attached under the field name `image`.
+
+<Warning>
+  The maximum file size is **10 MB**. Only image files are accepted (`image/*` MIME types). Supported formats include JPEG, PNG, GIF, WebP, and HEIC. Requests with non-image files are rejected with a `400` error.
+</Warning>
+
+<ParamField body="image" type="file" required>
+  The image file to upload. Must use the form field name `image`. Accepted MIME types: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/heic`. Maximum size: 10 MB.
+</ParamField>
+
+### Response
+
+**200 OK**
+
+<ResponseField name="success" type="boolean" required>
+  `true` when the upload succeeded.
+</ResponseField>
+
+<ResponseField name="data" type="object" required>
+  <Expandable title="data properties">
+    <ResponseField name="imageUrl" type="string" required>
+      Public URL of the uploaded image in Supabase Storage. Pass this value as `imageUrl` when creating a completion.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Description |
+| ------ | ----------- |
+| `400`  | No file was included in the request, or the file's MIME type is not an image. |
+| `401`  | Missing or invalid Bearer token. |
+| `500`  | Supabase Storage upload failed. The response includes the upstream error message. |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/upload \
+  -H "Authorization: Bearer <accessToken>" \
+  -F "image=@/path/to/photo.jpg"
+```
+
+```json
+{
+  "success": true,
+  "data": {
+    "imageUrl": "https://<project>.supabase.co/storage/v1/object/public/completion-images/42/1743170700000-abc123xyz.jpg"
+  }
+}
+```
+
+<Note>
+  **Alternative: direct Supabase Storage upload**
+
+  The frontend SDK (`frontend/lib/storage.ts`) uploads images directly to the same `completion-images` bucket in Supabase Storage, bypassing this endpoint. Both paths produce a public URL in the same format. Use this API endpoint when uploading from a server-side context or a custom client that does not have direct Supabase Storage access.
+</Note>

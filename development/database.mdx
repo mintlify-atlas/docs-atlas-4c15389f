@@ -1,0 +1,228 @@
+---
+title: "Database"
+description: "Data models and migrations for Aura Farm."
+---
+
+## Overview
+
+Aura Farm uses **PostgreSQL** as its database, accessed through [Prisma ORM](https://www.prisma.io) (v6). The schema is defined in `backend/prisma/schema.prisma` and versioned via Prisma migrations.
+
+## Schema
+
+The database has four models and one enum.
+
+### `UserRole` enum
+
+```prisma
+enum UserRole {
+  user
+  admin
+}
+```
+
+All users default to the `user` role. Admins have access to privileged API endpoints protected by the `requireAdmin` middleware.
+
+---
+
+### `User`
+
+Stores registered users. The `email` field is the join key between Supabase Auth and the PostgreSQL record.
+
+```prisma
+model User {
+  id              Int                   @id @default(autoincrement())
+  email           String                @unique
+  name            String
+  role            UserRole              @default(user)
+  auraPoints      Int                   @default(0)
+  streak          Int                   @default(0)
+  lastCompletedAt DateTime?
+  createdAt       DateTime              @default(now())
+  completions     ChallengeCompletion[]
+  flags           Flag[]
+
+  @@index([auraPoints])
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `Int` | Auto-incrementing primary key |
+| `email` | `String` | Unique — mirrors the Supabase Auth identity |
+| `name` | `String` | Display name |
+| `role` | `UserRole` | `user` or `admin`; defaults to `user` |
+| `auraPoints` | `Int` | Accumulated score from completed challenges |
+| `streak` | `Int` | Consecutive-day completion streak |
+| `lastCompletedAt` | `DateTime?` | Nullable; used for streak tracking |
+| `createdAt` | `DateTime` | Record creation timestamp |
+
+`auraPoints` is indexed to support efficient leaderboard queries.
+
+---
+
+### `Challenge`
+
+Represents a campus activity or location-based task that users can complete.
+
+```prisma
+model Challenge {
+  id           Int                   @id @default(autoincrement())
+  title        String
+  description  String
+  latitude     Float
+  longitude    Float
+  difficulty   String
+  pointsReward Int
+  createdAt    DateTime              @default(now())
+  completions  ChallengeCompletion[]
+
+  @@index([createdAt])
+  @@index([difficulty])
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `Int` | Auto-incrementing primary key |
+| `title` | `String` | Short challenge name |
+| `description` | `String` | Full description shown to the user |
+| `latitude` | `Float` | Geographic coordinate of the challenge location |
+| `longitude` | `Float` | Geographic coordinate of the challenge location |
+| `difficulty` | `String` | e.g., `easy`, `medium`, `hard` |
+| `pointsReward` | `Int` | Aura points awarded on completion |
+| `createdAt` | `DateTime` | Record creation timestamp |
+
+`createdAt` and `difficulty` are indexed to support filtered browsing.
+
+---
+
+### `ChallengeCompletion`
+
+Records a user's proof of completing a challenge. Each user can only complete a given challenge once.
+
+```prisma
+model ChallengeCompletion {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  challengeId Int
+  latitude    Float
+  longitude   Float
+  imageUrl    String?
+  imageUri    String
+  caption     String?
+  likes       Int       @default(0)
+  completedAt DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id])
+  challenge   Challenge @relation(fields: [challengeId], references: [id])
+  flags       Flag[]
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+  @@index([challengeId])
+  @@index([completedAt])
+  @@index([userId, completedAt])
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `Int` | Auto-incrementing primary key |
+| `userId` | `Int` | Foreign key → `User.id` |
+| `challengeId` | `Int` | Foreign key → `Challenge.id` |
+| `latitude` | `Float` | User's recorded location at time of submission |
+| `longitude` | `Float` | User's recorded location at time of submission |
+| `imageUrl` | `String?` | Optional public URL of the submission photo |
+| `imageUri` | `String` | Local or uploaded image reference |
+| `caption` | `String?` | Optional text added by the user |
+| `likes` | `Int` | Number of likes from other users |
+| `completedAt` | `DateTime` | Submission timestamp |
+
+**Key constraint:** `@@unique([userId, challengeId])` prevents a user from submitting the same challenge more than once.
+
+<Note>
+  The composite index on `[userId, completedAt]` accelerates queries that load a user's completion history sorted by date.
+</Note>
+
+---
+
+### `Flag`
+
+Allows users to report a completion as suspicious or invalid. A user can only flag a given completion once.
+
+```prisma
+model Flag {
+  id           Int                 @id @default(autoincrement())
+  completionId Int
+  flaggedById  Int
+  reason       String?
+  createdAt    DateTime            @default(now())
+  completion   ChallengeCompletion @relation(fields: [completionId], references: [id])
+  flaggedBy    User                @relation(fields: [flaggedById], references: [id])
+
+  @@unique([completionId, flaggedById])
+  @@index([completionId])
+  @@index([flaggedById])
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | `Int` | Auto-incrementing primary key |
+| `completionId` | `Int` | Foreign key → `ChallengeCompletion.id` |
+| `flaggedById` | `Int` | Foreign key → `User.id` (the reporter) |
+| `reason` | `String?` | Optional explanation from the reporter |
+| `createdAt` | `DateTime` | Flag submission timestamp |
+
+**Key constraint:** `@@unique([completionId, flaggedById])` prevents the same user from flagging the same completion multiple times.
+
+---
+
+## Indexed fields summary
+
+| Model | Indexed field(s) | Reason |
+|---|---|---|
+| `User` | `auraPoints` | Leaderboard ranking |
+| `Challenge` | `createdAt`, `difficulty` | Filtered and sorted browsing |
+| `ChallengeCompletion` | `userId`, `challengeId`, `completedAt`, `(userId, completedAt)` | User history, challenge stats, feed queries |
+| `Flag` | `completionId`, `flaggedById` | Flag lookup by completion or reporter |
+
+## Migrations
+
+<Steps>
+  <Step title="Apply pending migrations">
+    Run this after pulling changes that include new migration files:
+
+    ```bash
+    cd backend && npx prisma migrate deploy
+    ```
+  </Step>
+  <Step title="Create a new migration (development only)">
+    After editing `schema.prisma`, generate a migration file:
+
+    ```bash
+    cd backend && npx prisma migrate dev --name describe-your-change
+    ```
+  </Step>
+  <Step title="Seed the database">
+    Populate the database with initial data:
+
+    ```bash
+    cd backend && npm run seed
+    ```
+
+    This runs `prisma/seed.ts` via `ts-node`.
+  </Step>
+</Steps>
+
+<Warning>
+  Use `migrate deploy` in production environments. `migrate dev` is for development only — it may reset your database when there are conflicts.
+</Warning>
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    See how Prisma fits into the overall system design.
+  </Card>
+  <Card title="Environment setup" icon="gear" href="/development/environment">
+    Configure your `DATABASE_URL` and run migrations for the first time.
+  </Card>
+</CardGroup>

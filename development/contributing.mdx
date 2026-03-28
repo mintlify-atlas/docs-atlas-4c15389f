@@ -1,0 +1,136 @@
+---
+title: "Contributing"
+description: "How to contribute code to Aura Farm."
+---
+
+## Before you start
+
+Make sure you have the repository cloned and your local environment working. See [Environment Setup](/development/environment) if you haven't done this yet.
+
+All contributions go through a branch → pull request → review → merge workflow. Direct pushes to `main` are not allowed.
+
+## Git workflow
+
+<Steps>
+  <Step title="Pull the latest main">
+    Make sure your local `main` is up to date before branching:
+
+    ```bash
+    git checkout main
+    git pull
+    ```
+  </Step>
+  <Step title="Create a branch">
+    Branch names should be short and descriptive, using kebab-case. Prefix with the type of change:
+
+    ```bash
+    git checkout -b feat/add-challenge-filters
+    # or
+    git checkout -b fix/completion-duplicate-error
+    # or
+    git checkout -b docs/update-contributing-guide
+    ```
+
+    Common prefixes:
+
+    | Prefix | Use for |
+    |---|---|
+    | `feat/` | New features |
+    | `fix/` | Bug fixes |
+    | `docs/` | Documentation changes |
+    | `chore/` | Maintenance, dependency updates, tooling |
+    | `refactor/` | Code restructuring without behavior change |
+  </Step>
+  <Step title="Make your changes">
+    Write your code, tests, or documentation. Keep commits small and focused — one logical change per commit.
+  </Step>
+  <Step title="Stage and commit">
+    Stage your files and commit using the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) format:
+
+    ```bash
+    git add .
+    # or stage specific files:
+    git add backend/src/routes/challenges.routes.ts
+
+    git commit -m "feat: add difficulty filter to challenges endpoint"
+    ```
+
+    Commit message format:
+
+    ```
+    <type>: <short description>
+    ```
+
+    | Type | When to use |
+    |---|---|
+    | `feat` | A new feature |
+    | `fix` | A bug fix |
+    | `docs` | Documentation only |
+    | `chore` | Tooling, dependencies, CI |
+    | `refactor` | Restructuring without behavior change |
+    | `test` | Adding or updating tests |
+    | `style` | Formatting, whitespace (no logic change) |
+
+    <Tip>
+      Keep the description in the imperative mood and lowercase: "add filter" not "Added filter" or "Adds filter".
+    </Tip>
+  </Step>
+  <Step title="Push your branch">
+    ```bash
+    git push -u origin feat/add-challenge-filters
+    ```
+  </Step>
+  <Step title="Open a pull request">
+    Go to the repository on GitHub and open a pull request against `main`. Fill out the PR template and:
+
+    - Link to the corresponding issue (e.g., `Closes #42`)
+    - Add a clear description of what changed and why
+    - Request a reviewer from the team
+  </Step>
+  <Step title="Address review feedback">
+    Make any requested changes on your branch, then push again. The PR will update automatically:
+
+    ```bash
+    git add .
+    git commit -m "fix: handle empty results in challenge filter"
+    git push
+    ```
+  </Step>
+  <Step title="Merge">
+    Once your PR has at least one approval and all checks pass, it is ready to merge. A maintainer will merge it into `main`.
+  </Step>
+</Steps>
+
+## Pull request checklist
+
+Before requesting a review, confirm:
+
+- Your branch is up to date with `main` (rebase or merge if needed)
+- Your commit messages follow the conventional format
+- The PR is linked to an issue
+- You have assigned a reviewer
+
+## Commit message examples
+
+```bash
+# Features
+git commit -m "feat: add leaderboard pagination"
+git commit -m "feat: show streak badge on profile screen"
+
+# Bug fixes
+git commit -m "fix: prevent duplicate flag submission"
+git commit -m "fix: refresh token before upload request"
+
+# Docs and chores
+git commit -m "docs: add database schema reference"
+git commit -m "chore: upgrade prisma to 6.19"
+```
+
+<CardGroup cols={2}>
+  <Card title="Environment setup" icon="gear" href="/development/environment">
+    Get your local environment running before contributing.
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Understand the codebase structure before making changes.
+  </Card>
+</CardGroup>

@@ -1,0 +1,171 @@
+---
+title: "Architecture"
+description: "How Aura Farm is structured across frontend, backend, and database layers."
+---
+
+## Overview
+
+Aura Farm is a mobile application built across three primary layers: a React Native (Expo) frontend, an Express/Node.js backend API, and a PostgreSQL database managed by Prisma. Supabase provides authentication and storage services that both layers consume.
+
+```
+┌─────────────────────────────┐
+│  React Native (Expo)        │  ← Frontend (iOS / Android)
+│  Expo Router · NativeWind   │
+└────────────┬────────────────┘
+             │ HTTPS / Bearer JWT
+┌────────────▼────────────────┐
+│  Express 5 API              │  ← Backend (Node.js)
+│  Prisma ORM · Zod · Winston │
+└────────────┬────────────────┘
+             │
+     ┌───────┴────────┐
+     │                │
+┌────▼────┐   ┌───────▼──────┐
+│PostgreSQL│   │  Supabase    │
+│(Prisma) │   │  Auth + S3   │
+└─────────┘   └──────────────┘
+```
+
+## Backend structure
+
+The backend lives in `backend/src/` and is organized into the following directories:
+
+| Directory | Purpose |
+|---|---|
+| `routes/` | Express route definitions — one file per resource |
+| `controllers/` | Request handlers; business logic per route |
+| `middleware/` | Auth, rate limiting, error handling, request logging |
+| `types/` | Shared TypeScript type definitions |
+| `config/` | Swagger/OpenAPI setup |
+| `utils/` | Shared utilities (e.g., Winston logger) |
+| `prisma/` | Prisma schema, migrations, and seed script |
+
+### Routes
+
+The server mounts seven route groups under `/api`:
+
+| Mount path | File |
+|---|---|
+| `/api/auth` | `auth.routes.ts` |
+| `/api/challenges` | `challenges.routes.ts` |
+| `/api/completions` | `completions.routes.ts` |
+| `/api/flags` | `flags.routes.ts` |
+| `/api/users` | `users.routes.ts` |
+| `/api/leaderboard` | `leaderboard.routes.ts` |
+| `/api/upload` | `upload.routes.ts` |
+
+A `/health` endpoint returns a liveness check with a timestamp.
+
+Interactive API documentation is served at `/api/docs` via Swagger UI.
+
+### Middleware
+
+**`authenticate`** — Extracts the `Bearer` token from the `Authorization` header, verifies it with Supabase, then looks up the matching user in PostgreSQL. Attaches `req.user` (id, email, role, supabaseId) for downstream handlers.
+
+**`requireAdmin`** — Must follow `authenticate`. Returns `403` if `req.user.role` is not `admin`.
+
+**`rateLimiter`** — Four configurable limiters (public, auth, completion, flag) backed by `express-rate-limit`. Keyed by IP by default; set `RATE_LIMIT_BY=user` to key by user ID instead.
+
+**`errorHandler` / `notFoundHandler`** — Global error handling and 404 responses.
+
+**`requestLogger`** — Logs every incoming request via Winston.
+
+## Frontend structure
+
+The frontend lives in `frontend/` and is organized as an Expo Router application:
+
+| Directory | Purpose |
+|---|---|
+| `app/` | File-system routes (Expo Router) — tabs, screens, modals |
+| `components/` | Shared React Native UI components |
+| `lib/` | API client, auth helpers, storage utilities |
+| `stores/` | Zustand global state stores |
+
+### Key frontend libraries
+
+| Library | Role |
+|---|---|
+| Expo Router | File-system based navigation |
+| NativeWind | Tailwind CSS utility classes for React Native |
+| TanStack Query | Server-state fetching, caching, and synchronization |
+| Zustand | Lightweight client-side global state |
+| Supabase JS | Auth token management and direct storage access |
+| Axios | HTTP requests (supplementing `fetch` in some paths) |
+
+### API base URL auto-detection
+
+In development, the frontend does not need a manually configured API URL. `lib/api.ts` reads the Metro bundler's `hostUri` at runtime:
+
+```typescript
+export function apiBaseUrl(): string {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL ?? extra?.apiUrl;
+  if (envUrl) return envUrl;
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ??
+    Constants.manifest2?.extra?.expoGo?.debuggerHost ??
+    Constants.manifest?.debuggerHost;
+
+  if (hostUri) {
+    const host = hostUri.split(":")[0];
+    return `http://${host}:3000`;
+  }
+  return "http://localhost:3000";
+}
+```
+
+This means physical devices on the same WiFi network reach the backend automatically — no `.env` file required.
+
+## Authentication flow
+
+<Steps>
+  <Step title="User signs in">
+    The frontend calls `POST /api/auth/login`. The backend delegates to Supabase Auth and returns a JWT access token and refresh token.
+  </Step>
+  <Step title="Session is stored">
+    `lib/auth.ts` persists the session to `AsyncStorage` and syncs the tokens to the Supabase JS client so direct storage uploads share the same credentials.
+  </Step>
+  <Step title="Requests are authorized">
+    All authenticated API calls include `Authorization: Bearer <token>`. If the token is within 30 seconds of expiry, `getValidSession()` refreshes it before the request is sent.
+  </Step>
+  <Step title="Backend verifies the token">
+    The `authenticate` middleware calls `supabase.auth.getUser(token)`. On success it queries PostgreSQL for the user record and attaches it to `req.user`.
+  </Step>
+  <Step title="Role-based access">
+    Admin-only endpoints chain `requireAdmin` after `authenticate`, returning `403` if the user's role is not `admin`.
+  </Step>
+</Steps>
+
+## Key dependencies
+
+### Backend
+
+| Package | Version | Purpose |
+|---|---|---|
+| `express` | 5.x | HTTP server |
+| `@prisma/client` | 6.x | PostgreSQL ORM |
+| `@supabase/supabase-js` | 2.x | Auth token verification |
+| `zod` | 4.x | Request validation |
+| `winston` | 3.x | Structured logging |
+| `express-rate-limit` | 8.x | Rate limiting |
+| `swagger-ui-express` | 5.x | API documentation UI |
+
+### Frontend
+
+| Package | Version | Purpose |
+|---|---|---|
+| `expo` | 54.x | React Native runtime and toolchain |
+| `expo-router` | 6.x | File-system navigation |
+| `nativewind` | 4.x | Tailwind styling for React Native |
+| `@tanstack/react-query` | 5.x | Data fetching and caching |
+| `zustand` | 5.x | Global state management |
+| `@supabase/supabase-js` | 2.x | Auth and storage client |
+
+<CardGroup cols={2}>
+  <Card title="Environment setup" icon="gear" href="/development/environment">
+    Configure environment variables and run the app locally.
+  </Card>
+  <Card title="Database" icon="database" href="/development/database">
+    Explore the Prisma schema and data models.
+  </Card>
+</CardGroup>

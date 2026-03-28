@@ -1,0 +1,307 @@
+---
+title: "Users"
+description: "Access and manage user profiles."
+---
+
+<Note>
+  All endpoints are prefixed with `/api/users`. Responses use
+  `Content-Type: application/json`. Endpoints that return or modify private
+  data require an `Authorization: Bearer <accessToken>` header.
+</Note>
+
+---
+
+## GET /api/users/me
+
+Return the full profile of the currently authenticated user, including their
+aura points, streak, completion count, and leaderboard rank.
+
+<Note>
+  Auth required: **Yes** — include `Authorization: Bearer <accessToken>`.
+</Note>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="integer">User ID.</ResponseField>
+    <ResponseField name="email" type="string">Email address.</ResponseField>
+    <ResponseField name="name" type="string">Display name.</ResponseField>
+    <ResponseField name="role" type="string">`user` or `admin`.</ResponseField>
+    <ResponseField name="auraPoints" type="integer">Total aura points earned.</ResponseField>
+    <ResponseField name="streak" type="integer">
+      Current consecutive-day completion streak.
+    </ResponseField>
+    <ResponseField name="lastCompletedAt" type="string | null">
+      ISO 8601 timestamp of the most recent completion, or `null` if none.
+    </ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 account creation timestamp.</ResponseField>
+    <ResponseField name="completionsCount" type="integer">
+      Total number of challenges completed.
+    </ResponseField>
+    <ResponseField name="rank" type="integer">
+      The user's current leaderboard rank (1 = highest aura points).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `401`  | Missing or invalid Bearer token |
+| `404`  | User record not found |
+
+### Example
+
+```bash
+curl http://localhost:3000/api/users/me \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+---
+
+## PATCH /api/users/me
+
+Update the display name and/or email address of the currently authenticated
+user. At least one updatable field must be provided.
+
+<Note>
+  Auth required: **Yes** — include `Authorization: Bearer <accessToken>`.
+</Note>
+
+### Request body
+
+<ParamField body="name" type="string">
+  New display name. 1–100 characters. Whitespace is trimmed.
+</ParamField>
+
+<ParamField body="email" type="string">
+  New email address. Must be a valid email, maximum 255 characters.
+  Stored in lowercase.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"Profile updated successfully"`
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  The full updated user record from the database.
+  <Expandable title="properties">
+    <ResponseField name="id" type="integer">User ID.</ResponseField>
+    <ResponseField name="email" type="string">Updated email address.</ResponseField>
+    <ResponseField name="name" type="string">Updated display name.</ResponseField>
+    <ResponseField name="role" type="string">`user` or `admin`.</ResponseField>
+    <ResponseField name="auraPoints" type="integer">Total aura points.</ResponseField>
+    <ResponseField name="streak" type="integer">Current streak.</ResponseField>
+    <ResponseField name="lastCompletedAt" type="string | null">Last completion timestamp.</ResponseField>
+    <ResponseField name="createdAt" type="string">Account creation timestamp.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | No valid fields provided, or validation failure |
+| `401`  | Missing or invalid Bearer token |
+| `404`  | User record not found |
+| `409`  | The supplied email is already in use by another account |
+
+### Example
+
+```bash
+curl -X PATCH http://localhost:3000/api/users/me \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{"name": "Mustang Mike"}'
+```
+
+---
+
+## GET /api/users/:id
+
+Return the public profile of any user by their numeric ID.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The numeric ID of the user.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="integer">User ID.</ResponseField>
+    <ResponseField name="email" type="string">Email address.</ResponseField>
+    <ResponseField name="name" type="string">Display name.</ResponseField>
+    <ResponseField name="role" type="string">`user` or `admin`.</ResponseField>
+    <ResponseField name="auraPoints" type="integer">Total aura points earned.</ResponseField>
+    <ResponseField name="streak" type="integer">Current streak.</ResponseField>
+    <ResponseField name="lastCompletedAt" type="string | null">Last completion timestamp.</ResponseField>
+    <ResponseField name="createdAt" type="string">ISO 8601 account creation timestamp.</ResponseField>
+    <ResponseField name="completionsCount" type="integer">Total challenges completed.</ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | `id` is not a valid integer |
+| `404`  | No user found with that ID |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/users/7"
+```
+
+---
+
+## GET /api/users/:id/completions
+
+Return all challenge completions for the specified user, ordered by most recent
+first. Each completion includes the full challenge record.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The numeric ID of the user.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="array">
+  Completions sorted by `completedAt` descending.
+  <Expandable title="completion properties">
+    <ResponseField name="id" type="integer">Completion ID.</ResponseField>
+    <ResponseField name="userId" type="integer">User ID.</ResponseField>
+    <ResponseField name="challengeId" type="integer">Challenge ID.</ResponseField>
+    <ResponseField name="latitude" type="number">Latitude at completion.</ResponseField>
+    <ResponseField name="longitude" type="number">Longitude at completion.</ResponseField>
+    <ResponseField name="imageUrl" type="string | null">Proof photo URL.</ResponseField>
+    <ResponseField name="imageUri" type="string">Proof photo URI.</ResponseField>
+    <ResponseField name="caption" type="string | null">Optional caption.</ResponseField>
+    <ResponseField name="completedAt" type="string">ISO 8601 completion timestamp.</ResponseField>
+    <ResponseField name="likes" type="integer">Like count.</ResponseField>
+    <ResponseField name="challenge" type="object">
+      Full challenge record for the completed challenge. See
+      [GET /api/challenges/:id](/api/challenges#get-apichallengesid) for field
+      details.
+    </ResponseField>
+    <ResponseField name="flags" type="array">
+      Flags reported on this completion, each including the `flaggedBy` user
+      record.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | `id` is not a valid integer |
+| `404`  | No user found with that ID |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/users/7/completions"
+```
+
+---
+
+## GET /api/users/:id/stats
+
+Return aggregated statistics for a user, including breakdowns by difficulty,
+streak history, and recent activity.
+
+### Path parameters
+
+<ParamField path="id" type="integer" required>
+  The numeric ID of the user.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="userId" type="integer">User ID.</ResponseField>
+    <ResponseField name="totalCompletions" type="integer">
+      Total number of challenges completed.
+    </ResponseField>
+    <ResponseField name="auraPoints" type="integer">
+      Total aura points earned.
+    </ResponseField>
+    <ResponseField name="currentStreak" type="integer">
+      Current consecutive-day streak.
+    </ResponseField>
+    <ResponseField name="longestStreak" type="integer">
+      Longest consecutive-day streak ever recorded for this user.
+    </ResponseField>
+    <ResponseField name="completionsByDifficulty" type="object">
+      <Expandable title="properties">
+        <ResponseField name="easy" type="integer">Completions on easy challenges.</ResponseField>
+        <ResponseField name="medium" type="integer">Completions on medium challenges.</ResponseField>
+        <ResponseField name="hard" type="integer">Completions on hard challenges.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="pointsByDifficulty" type="object">
+      <Expandable title="properties">
+        <ResponseField name="easy" type="integer">Points earned from easy challenges.</ResponseField>
+        <ResponseField name="medium" type="integer">Points earned from medium challenges.</ResponseField>
+        <ResponseField name="hard" type="integer">Points earned from hard challenges.</ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="activity" type="object">
+      <Expandable title="properties">
+        <ResponseField name="completedThisWeek" type="integer">
+          Completions in the last 7 days.
+        </ResponseField>
+        <ResponseField name="completedThisMonth" type="integer">
+          Completions in the last 30 days.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="averagePointsPerCompletion" type="integer">
+      Mean aura points per completed challenge (rounded to the nearest integer).
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | `id` is not a valid integer |
+| `404`  | No user found with that ID |
+
+### Example
+
+```bash
+curl "http://localhost:3000/api/users/7/stats"
+```

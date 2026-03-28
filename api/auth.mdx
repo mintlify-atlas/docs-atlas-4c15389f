@@ -1,0 +1,300 @@
+---
+title: "Auth"
+description: "Register, sign in, verify email, and manage passwords."
+---
+
+<Note>
+  All endpoints are prefixed with `/api/auth`. Requests and responses use
+  `Content-Type: application/json`. Endpoints that require authentication expect
+  an `Authorization: Bearer <accessToken>` header.
+</Note>
+
+---
+
+## POST /api/auth/signup
+
+Register a new user account. A verification OTP is automatically sent to the
+provided email address.
+
+<Note>
+  Only `@calpoly.edu` email addresses are accepted.
+</Note>
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  A valid `@calpoly.edu` email address.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Account password. Must be 8–30 characters.
+</ParamField>
+
+<ParamField body="username" type="string" required>
+  Display name shown on the user's profile. Must be 2–30 characters.
+</ParamField>
+
+### Response — 201 Created
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Human-readable confirmation, e.g. `"Account created. Please check your email for the verification code."`
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="id" type="integer">
+      Unique user ID.
+    </ResponseField>
+    <ResponseField name="email" type="string">
+      Registered email address.
+    </ResponseField>
+    <ResponseField name="name" type="string">
+      Username supplied at registration.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Missing or invalid fields, non-`@calpoly.edu` email, password/username length out of range |
+| `409`  | Email is already registered |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "mmustang@calpoly.edu",
+    "password": "SecurePass123",
+    "username": "musty_mustang"
+  }'
+```
+
+---
+
+## POST /api/auth/login
+
+Sign in with email and password. Returns Supabase session tokens and the
+user's profile data.
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  Registered email address.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Account password.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="accessToken" type="string">
+      Short-lived JWT used to authenticate subsequent requests.
+    </ResponseField>
+    <ResponseField name="refreshToken" type="string">
+      Long-lived token used to obtain a new access token.
+    </ResponseField>
+    <ResponseField name="user" type="object">
+      <Expandable title="properties">
+        <ResponseField name="id" type="integer">
+          User ID.
+        </ResponseField>
+        <ResponseField name="email" type="string">
+          User's email address.
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Display name.
+        </ResponseField>
+        <ResponseField name="auraPoints" type="integer">
+          Total aura points earned.
+        </ResponseField>
+        <ResponseField name="streak" type="integer">
+          Current consecutive-day completion streak.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Missing `email` or `password` field |
+| `401`  | Invalid email or password |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "mmustang@calpoly.edu",
+    "password": "SecurePass123"
+  }'
+```
+
+---
+
+## POST /api/auth/verify
+
+Verify the OTP code that was emailed after signup. Returns session tokens on
+success, making the account active.
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  Email address that received the OTP.
+</ParamField>
+
+<ParamField body="token" type="string" required>
+  The OTP code from the verification email. Must be 4–8 characters.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"Email verified successfully."`
+</ResponseField>
+
+<ResponseField name="data" type="object">
+  <Expandable title="properties">
+    <ResponseField name="accessToken" type="string">
+      Short-lived JWT.
+    </ResponseField>
+    <ResponseField name="refreshToken" type="string">
+      Long-lived refresh token.
+    </ResponseField>
+    <ResponseField name="user" type="object">
+      <Expandable title="properties">
+        <ResponseField name="id" type="integer">User ID.</ResponseField>
+        <ResponseField name="email" type="string">Email address.</ResponseField>
+        <ResponseField name="name" type="string">Display name.</ResponseField>
+        <ResponseField name="auraPoints" type="integer">Total aura points.</ResponseField>
+        <ResponseField name="streak" type="integer">Current streak.</ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Invalid or expired OTP code |
+| `404`  | User record not found after verification |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/auth/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "mmustang@calpoly.edu",
+    "token": "123456"
+  }'
+```
+
+---
+
+## POST /api/auth/resend
+
+Resend the signup verification OTP to the provided email address.
+
+### Request body
+
+<ParamField body="email" type="string" required>
+  Email address to resend the verification code to.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"A new code has been sent to your email."`
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | Missing `email` or Supabase could not send the code |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/auth/resend \
+  -H "Content-Type: application/json" \
+  -d '{"email": "mmustang@calpoly.edu"}'
+```
+
+---
+
+## POST /api/auth/change-password
+
+Change the password for the currently authenticated user. The current password
+is verified before applying the update.
+
+<Note>
+  Auth required: **Yes** — include `Authorization: Bearer <accessToken>`.
+</Note>
+
+### Request body
+
+<ParamField body="oldPassword" type="string" required>
+  The user's current password.
+</ParamField>
+
+<ParamField body="newPassword" type="string" required>
+  The desired new password. Must be 8–30 characters.
+</ParamField>
+
+### Response — 200 OK
+
+<ResponseField name="success" type="boolean">
+  `true` on success.
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  `"Password updated successfully."`
+</ResponseField>
+
+### Error responses
+
+| Status | Condition |
+|--------|-----------|
+| `400`  | `oldPassword` is incorrect, or `newPassword` length is out of range |
+| `401`  | Missing or invalid Bearer token |
+
+### Example
+
+```bash
+curl -X POST http://localhost:3000/api/auth/change-password \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{
+    "oldPassword": "SecurePass123",
+    "newPassword": "EvenBetter456"
+  }'
+```

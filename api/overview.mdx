@@ -1,0 +1,163 @@
+---
+title: "API Overview"
+description: "Base URL, request format, response format, errors, and rate limits for the Aura Farm API."
+---
+
+## Base URL
+
+| Environment | URL |
+|-------------|-----|
+| Development | `http://localhost:3000` |
+| Custom | Set `EXPO_PUBLIC_API_URL` environment variable |
+
+All API endpoints are prefixed with `/api`. For example: `http://localhost:3000/api/challenges`.
+
+<Note>
+The frontend automatically derives the backend host from the Metro bundler URI so physical devices and emulators on other networks can reach the backend. Set `EXPO_PUBLIC_API_URL` to override this behavior.
+</Note>
+
+## Request format
+
+- **Content-Type**: Include `Content-Type: application/json` on all `POST` and `PATCH` requests.
+- **Body**: Send request bodies as JSON.
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@calpoly.edu", "password": "yourpassword"}'
+```
+
+## Response format
+
+All responses follow a consistent envelope structure.
+
+**Success**
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+**Error**
+
+```json
+{
+  "success": false,
+  "error": "Human-readable error message"
+}
+```
+
+**Validation error** (HTTP 400): includes a `errors` array with per-field details.
+
+```json
+{
+  "success": false,
+  "error": "Validation error",
+  "errors": [
+    { "field": "email", "message": "Invalid email" }
+  ]
+}
+```
+
+## Pagination
+
+Endpoints that return lists accept `page` and `limit` as query parameters. Paginated responses include a top-level `pagination` object alongside `data`.
+
+```
+GET /api/completions?page=1&limit=20
+```
+
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "pagination": {
+    "page": 1,
+    "limit": 20,
+    "total": 143,
+    "totalPages": 8
+  }
+}
+```
+
+## HTTP status codes
+
+| Code | Meaning |
+|------|---------|
+| `200` | OK — request succeeded |
+| `201` | Created — resource was created |
+| `400` | Bad Request — validation failed or missing fields |
+| `401` | Unauthorized — missing or invalid token |
+| `403` | Forbidden — authenticated but insufficient permissions |
+| `404` | Not Found — resource does not exist |
+| `409` | Conflict — duplicate record (e.g. email already registered) |
+| `429` | Too Many Requests — rate limit exceeded |
+| `500` | Internal Server Error |
+
+## Rate limiting
+
+Rate limits are applied per IP address by default. Set `RATE_LIMIT_BY=user` in the backend environment to key limits by authenticated user ID instead.
+
+Rate limit headers (`X-RateLimit-*`) are included on all rate-limited responses.
+
+| Limiter | Applied to | Default window | Default max requests |
+|---------|-----------|----------------|----------------------|
+| `publicLimiter` | `/api/challenges`, `/api/leaderboard` | 15 minutes | 100 |
+| `authLimiter` | Auth endpoints | 15 minutes | 5 |
+| `completionLimiter` | `POST /api/completions` | 1 hour | 10 |
+| `flagLimiter` | `POST /api/flags` | 1 hour | 5 |
+
+Windows and maximums are configurable via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RL_PUBLIC_WINDOW_MINUTES` | `15` | Public limiter window in minutes |
+| `RL_PUBLIC_MAX` | `100` | Public limiter max requests |
+| `RL_AUTH_WINDOW_MINUTES` | `15` | Auth limiter window in minutes |
+| `RL_AUTH_MAX` | `5` | Auth limiter max requests |
+| `RL_COMPLETION_WINDOW_HOURS` | `1` | Completion limiter window in hours |
+| `RL_COMPLETION_MAX` | `10` | Completion limiter max requests |
+| `RL_FLAG_WINDOW_HOURS` | `1` | Flag limiter window in hours |
+| `RL_FLAG_MAX` | `5` | Flag limiter max requests |
+
+When a rate limit is exceeded the API responds with HTTP `429` and a JSON body:
+
+```json
+{ "message": "Too many requests, please try again later." }
+```
+
+## Health check
+
+```
+GET /health
+```
+
+Returns `{ "status": "ok", "timestamp": "..." }`. No authentication required. Useful for uptime monitoring.
+
+## Endpoint groups
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="lock" href="/api/authentication">
+    Sign up, log in, verify email, and manage passwords.
+  </Card>
+  <Card title="Challenges" icon="flag" href="/api/challenges">
+    List and retrieve location-based challenges.
+  </Card>
+  <Card title="Completions" icon="circle-check" href="/api/completions">
+    Submit, list, and like challenge completions.
+  </Card>
+  <Card title="Users" icon="user" href="/api/users">
+    Retrieve and update user profiles.
+  </Card>
+  <Card title="Leaderboard" icon="trophy" href="/api/leaderboard">
+    Ranked list of users by aura points.
+  </Card>
+  <Card title="Flags" icon="triangle-exclamation" href="/api/flags">
+    Report inappropriate completions.
+  </Card>
+  <Card title="Upload" icon="cloud-arrow-up" href="/api/upload">
+    Upload images for completion submissions.
+  </Card>
+</CardGroup>
